@@ -1,28 +1,45 @@
 import { marketData } from '../data';
-import { TripodValue } from './type';
+import { TripodText, TripodValue } from './type';
 
-const skillMap = new Map(
-  marketData.marketAuction.marketMenuAuctionSkillList.map((data) => [
-    data.value,
-    data,
-  ])
-);
-
-const tripodMap = new Map(
+const valueMap = new Map(
   marketData.marketAuction.marketMenuAuctionSkillList.flatMap((skill) =>
     skill.marketMenuSkillTripodList.map((tripod) => [
       `${skill.value}-${tripod.value}`,
-      tripod,
+      [skill, tripod],
     ])
   )
 );
 
-export function getTripodString(item: TripodValue) {
-  const skill = skillMap.get(item.skill)!;
-  const tripod = tripodMap.get(`${item.skill}-${item.tripod}`)!;
-  return `[${skill.text}] ${tripod.text}+${item.level}`;
+const textMap = new Map(
+  marketData.marketAuction.marketMenuAuctionSkillList.flatMap((skill) =>
+    skill.marketMenuSkillTripodList.map((tripod) => [
+      `${skill.value}-${tripod.value}`,
+      [skill, tripod],
+    ])
+  )
+);
+
+export function getTripodString(item: TripodText) {
+  return `[${item.skill}] ${item.tripod}+${item.level}`;
+}
+
+export function textToValue(item: TripodText): TripodValue {
+  const [skill, tripod] = textMap.get(`${item.skill}-${item.tripod}`)!;
+  return {
+    skill: skill.value,
+    tripod: tripod.value,
+    level: item.level,
+  };
 }
 
 export function hashTripod(tripod: TripodValue) {
   return `${tripod.skill}-${tripod.tripod}-${tripod.level}`;
+}
+
+export function tripodComparer(a: TripodText, b: TripodText) {
+  const skillCompare = a.skill.localeCompare(b.skill);
+  if (skillCompare !== 0) {
+    return skillCompare;
+  }
+  return a.tripod.localeCompare(b.tripod);
 }

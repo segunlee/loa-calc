@@ -203,15 +203,9 @@ export function getSearchScript(classCode: number, tripods: TripodValue[][]) {
               skillOptionList: tripod
             }, Math.max(Math.floor(totalPages / 20), 2));
             
-            result.push({
-              tripod,
-              products: [...products, ...products5p],
-            });
+            result.push(...products, ...products5p);
           } else {
-            result.push({
-              tripod,
-              products,
-            });
+            result.push(...products);
           }
           await new Promise(resolve => setTimeout(resolve, 6000));
       }

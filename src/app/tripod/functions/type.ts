@@ -33,7 +33,7 @@ export interface ComposeFilter {
 }
 
 export interface Summary {
-  tripod: TripodValue[];
+  tripod: TripodText[];
   price: number;
   trade2: number | undefined;
   trade1: number | undefined;
@@ -42,5 +42,5 @@ export interface Summary {
 
 export interface ComposeResult {
   price: number;
-  summary: Record<number, Summary>;
+  combination: Record<number, Summary>;
 }

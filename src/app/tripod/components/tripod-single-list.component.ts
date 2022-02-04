@@ -58,7 +58,7 @@ export class TripodSingleListComponent implements OnChanges {
         .sort((a, b) => a.price - b.price);
     }
     if (changes.hoveredResult) {
-      const tripods = Object.values(this.hoveredResult?.summary ?? {})
+      const tripods = Object.values(this.hoveredResult?.combination ?? {})
         .flatMap((x) => x.tripod)
         .map((tripod) => getTripodString(tripod));
       this.singles = this.singles.map((single) => {

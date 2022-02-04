@@ -12,6 +12,7 @@ import { getSearchScript } from '../functions/search';
 import {
   ComposeFilter,
   ComposeResult,
+  Product,
   SearchResult,
   Summary,
   TripodValue,
@@ -74,7 +75,7 @@ export class TripodComponent implements OnInit, OnDestroy {
 
   selectedCategories: number[] = [];
 
-  searchResult: SearchResult[] = [];
+  searchResult: Product[] = [];
   composeResult: ComposeResult[] = [];
   searchResultCategories: number[] = [];
   lastFilter: ComposeFilter = this.filterForm.value;

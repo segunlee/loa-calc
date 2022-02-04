@@ -4,9 +4,10 @@ import {
   Product,
   SearchResult,
   Summary,
+  TripodText,
   TripodValue,
 } from './type';
-import { hashTripod } from './util';
+import { hashTripod, tripodComparer } from './util';
 
 function getPrice(products: Product[]) {
   const trade2 = products.find((x) => x.tradeLeft === 2)?.buyPrice;
@@ -27,67 +28,56 @@ function getPrice(products: Product[]) {
   };
 }
 
-function summarySearchResult(
-  searchResult: SearchResult[],
-  filter: ComposeFilter
-): Record<number, Summary[]> {
-  const obj: Record<number, Summary[]> = {
-    180000: [],
-    190010: [],
-    190020: [],
-    190030: [],
-    190040: [],
-    190050: [],
+function categorizeProducts(products: Product[]) {
+  const head = products.filter((x) => x.name.endsWith('모자'));
+  const top = products.filter((x) => x.name.endsWith('상의'));
+  const bottom = products.filter((x) => x.name.endsWith('하의'));
+  const glove = products.filter((x) => x.name.endsWith('장갑'));
+  const shoulder = products.filter((x) => x.name.endsWith('견갑'));
+  const weapon = products.filter(
+    (x) =>
+      ![...head, ...top, ...bottom, ...glove, ...shoulder].find(
+        (y) => x.id === y.id
+      )
+  );
+  return {
+    180000: weapon,
+    190010: head,
+    190020: top,
+    190030: bottom,
+    190040: glove,
+    190050: shoulder,
   };
-  searchResult.forEach(({ tripod, products }) => {
-    const filteredProducts = products.filter(
-      (x) => x.tradeLeft >= filter.tradeLeft
-    );
-    const head = filteredProducts.filter((x) => x.name.endsWith('모자'));
-    const top = filteredProducts.filter((x) => x.name.endsWith('상의'));
-    const bottom = filteredProducts.filter((x) => x.name.endsWith('하의'));
-    const glove = filteredProducts.filter((x) => x.name.endsWith('장갑'));
-    const shoulder = filteredProducts.filter((x) => x.name.endsWith('견갑'));
-    const weapon = filteredProducts.filter(
-      (x) =>
-        ![...head, ...top, ...bottom, ...glove, ...shoulder].find(
-          (y) => x.id === y.id
-        )
-    );
+}
 
-    [
-      { gear: head, code: 190010 },
-      { gear: top, code: 190020 },
-      { gear: bottom, code: 190030 },
-      { gear: glove, code: 190040 },
-      { gear: shoulder, code: 190050 },
-      { gear: weapon, code: 180000 },
-    ].forEach(({ gear, code }) => {
-      if (
-        filter.excludedItems[code].find(
-          (x) => JSON.stringify(x.tripod) === JSON.stringify(tripod)
-        )
-      ) {
-        return;
-      }
-      if (gear.length > 0) {
-        const priceObj = getPrice(gear);
-        if (priceObj) {
-          obj[code].push({
-            tripod,
-            ...priceObj,
-          });
-        }
-      }
-    });
-  });
+function generateSummary(
+  products: Product[],
+  tripods: TripodText[]
+): Summary | undefined {
+  const tripodProducts = products.filter((product) =>
+    tripods.every((tripod) =>
+      product.effects.find(
+        (effect) =>
+          effect.skill === tripod.skill &&
+          effect.tripod === tripod.tripod &&
+          effect.level === tripod.level
+      )
+    )
+  );
 
-  return obj;
+  const priceObj = getPrice(tripodProducts);
+  if (!priceObj) {
+    return;
+  }
+  return {
+    tripod: tripods,
+    ...priceObj,
+  };
 }
 
 function tripodOverlap(
   summaryMap: Record<number, Summary>,
-  tripods: TripodValue[]
+  tripods: TripodText[]
 ) {
   return !!Object.values(summaryMap).find((x) =>
     x.tripod.find((y) =>
@@ -97,11 +87,12 @@ function tripodOverlap(
 }
 
 export function compose(
-  searchResult: SearchResult[],
-  tripods: TripodValue[],
+  products: Product[],
+  tripods: TripodText[],
   categoryList: number[],
   filter: ComposeFilter
 ): ComposeResult[] {
+  products.sort((a, b) => a.buyPrice - b.buyPrice);
   const filteredTripods = tripods.filter(
     (tripod) => !tripodOverlap(filter.fixedItems, [tripod])
   );
@@ -115,17 +106,17 @@ export function compose(
   const summaryRecord =
     tripodThreshold === filteredCategoryList.length * 2
       ? summarySearchResult(
-          searchResult.filter((x) => x.tripod.length >= 2),
+          products.filter((x) => x.tripod.length >= 2),
           filter
         )
-      : summarySearchResult(searchResult, filter);
+      : summarySearchResult(products, filter);
   const requiredTripodSet = new Set(
     filter.requiredTripods.map((tripod) => hashTripod(tripod))
   );
 
-  let results: { summary: Record<number, Summary>; price: number }[] = [];
+  let results: { combination: Record<number, Summary>; price: number }[] = [];
   function rec(
-    summary: Record<number, Summary>,
+    combination: Record<number, Summary>,
     totalPrice: number,
     requiredLeft: number,
     categoryCount: number,
@@ -139,20 +130,21 @@ export function compose(
     }
     if (categoryCount === filteredCategoryList.length) {
       if (requiredLeft <= 0 && tripodCount >= tripodThreshold) {
-        results.push({ summary, price: totalPrice });
+        results.push({ combination, price: totalPrice });
         results.sort((a, b) => a.price - b.price);
         results = results.slice(0, 100);
       }
       return;
     }
-    const list = summaryRecord[filteredCategoryList[categoryCount]];
+    const category = filteredCategoryList[categoryCount];
+    const list = summaryRecord[category];
     for (let el of list) {
-      if (!tripodOverlap(summary, el.tripod)) {
+      if (!tripodOverlap(combination, el.tripod)) {
         const requiredCount = el.tripod.filter((x) =>
           requiredTripodSet.has(hashTripod(x))
         ).length;
         rec(
-          { ...summary, [filteredCategoryList[categoryCount]]: el },
+          { ...combination, [category]: el },
           totalPrice + el.price,
           requiredLeft - requiredCount,
           categoryCount + 1,
@@ -170,8 +162,8 @@ export function compose(
   );
 
   return results.map((result) => {
-    const tripods = Object.values(result.summary).flatMap((x) => x.tripod);
-    const restSingles = searchResult
+    const tripods = Object.values(result.combination).flatMap((x) => x.tripod);
+    const restSingles = products
       .filter((x) => x.tripod.length === 1)
       .filter(
         (x) =>

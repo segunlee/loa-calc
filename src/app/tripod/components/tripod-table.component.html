@@ -18,7 +18,7 @@
         <th mat-header-cell *matHeaderCellDef>{{ categoryColumn.text }}</th>
         <td [matMenuTriggerFor]="menu" mat-cell *matCellDef="let element">
           <app-tripod-item-view
-            [item]="element.summary[categoryColumn.value]"
+            [item]="element.combination[categoryColumn.value]"
             [filter]="filter"
           ></app-tripod-item-view>
           <mat-menu #menu="matMenu">
@@ -26,7 +26,7 @@
               (click)="
                 fixItem.emit({
                   category: categoryColumn.value,
-                  summary: element.summary[categoryColumn.value]
+                  summary: element.combination[categoryColumn.value]
                 })
               "
               mat-menu-item
@@ -37,7 +37,7 @@
               (click)="
                 excludeItem.emit({
                   category: categoryColumn.value,
-                  summary: element.summary[categoryColumn.value]
+                  summary: element.combination[categoryColumn.value]
                 })
               "
               mat-menu-item
